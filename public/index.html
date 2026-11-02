@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Portal administrativo del Colegio Tesla: avisos y solicitudes de informes.">
+  <title>Panel | Portal Colegio Tesla</title>
+  <link rel="icon" href="img/logo-tesla.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Si no hay sesión, redirigir al login antes de mostrar nada -->
+  <script>if (!localStorage.getItem('tesla_token')) location.replace('login.html');</script>
+  <script src="js/api.js" defer></script>
+  <script src="js/panel.js" defer></script>
+</head>
+<body class="pagina-panel">
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <!-- ===== Barra superior ===== -->
+  <header class="topbar">
+    <div class="topbar-marca">
+      <img src="img/logo-tesla.png" alt="Colegio Tesla" class="topbar-logo" width="552" height="373">
+      <span class="topbar-titulo">Portal administrativo</span>
+    </div>
+    <div class="topbar-usuario">
+      <span class="avatar" id="avatar" aria-hidden="true">?</span>
+      <div class="usuario-datos">
+        <span id="usuario-nombre" class="usuario-nombre">Cargando…</span>
+        <span id="usuario-rol" class="usuario-rol"></span>
+      </div>
+      <button type="button" id="btn-salir" class="btn btn-fantasma btn-chico">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main id="contenido" class="panel">
+    <!-- ===== Resumen ===== -->
+    <section class="resumen" aria-label="Resumen">
+      <article class="tarjeta-dato">
+        <span class="dato-num" id="dato-avisos">–</span>
+        <span class="dato-etq">avisos publicados</span>
+      </article>
+      <article class="tarjeta-dato">
+        <span class="dato-num" id="dato-fijados">–</span>
+        <span class="dato-etq">avisos fijados</span>
+      </article>
+      <article class="tarjeta-dato destacado">
+        <span class="dato-num" id="dato-nuevas">–</span>
+        <span class="dato-etq">solicitudes nuevas</span>
+      </article>
+    </section>
+
+    <!-- ===== Pestañas ===== -->
+    <div class="tabs" role="tablist" aria-label="Secciones del panel">
+      <button type="button" role="tab" id="tab-avisos" class="tab activa" aria-selected="true" aria-controls="seccion-avisos">Avisos</button>
+      <button type="button" role="tab" id="tab-solicitudes" class="tab" aria-selected="false" aria-controls="seccion-solicitudes" tabindex="-1">
+        Solicitudes <span class="badge" id="badge-nuevas" hidden>0</span>
+      </button>
+    </div>
+
+    <!-- ================= AVISOS ================= -->
+    <section id="seccion-avisos" role="tabpanel" aria-labelledby="tab-avisos" class="seccion">
+      <div class="layout-avisos">
+        <!-- Formulario crear / editar -->
+        <form id="form-aviso" class="tarjeta form-aviso" novalidate>
+          <h2 id="titulo-form">Nuevo aviso</h2>
+          <input type="hidden" id="aviso-id">
+
+          <div class="campo">
+            <label for="aviso-titulo">Título *</label>
+            <input type="text" id="aviso-titulo" maxlength="120" required placeholder="Ej. Junta de padres de familia">
+            <p class="error-campo" data-error="titulo"></p>
+          </div>
+
+          <div class="fila-2">
+            <div class="campo">
+              <label for="aviso-categoria">Categoría</label>
+              <select id="aviso-categoria">
+                <option value="general">General</option>
+                <option value="preescolar">Preescolar</option>
+                <option value="primaria">Primaria</option>
+                <option value="evento">Evento</option>
+                <option value="administrativo">Administrativo</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="aviso-fecha">Fecha del evento</label>
+              <input type="date" id="aviso-fecha">
+              <p class="error-campo" data-error="fechaEvento"></p>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label for="aviso-contenido">Contenido *</label>
+            <textarea id="aviso-contenido" rows="5" maxlength="2000" required placeholder="Escribe el aviso para los padres de familia…"></textarea>
+            <div class="contador-texto"><span id="contador-contenido">0</span>/2000</div>
+            <p class="error-campo" data-error="contenido"></p>
+          </div>
+
+          <label class="check-linea">
+            <input type="checkbox" id="aviso-fijado">
+            <span>Fijar este aviso al inicio</span>
+          </label>
+
+          <div class="acciones-form">
+            <button type="submit" id="btn-guardar" class="btn btn-primario">
+              <span class="spinner" aria-hidden="true"></span>
+              <span class="btn-texto">Publicar aviso</span>
+            </button>
+            <button type="button" id="btn-cancelar" class="btn btn-secundario" hidden>Cancelar</button>
+          </div>
+        </form>
+
+        <!-- Lista de avisos -->
+        <div class="lista-avisos-wrap">
+          <div class="filtros-avisos">
+            <div class="chips" id="chips-categorias" role="group" aria-label="Filtrar por categoría">
+              <button type="button" class="chip activo" data-categoria="" aria-pressed="true">Todos</button>
+              <button type="button" class="chip" data-categoria="general" aria-pressed="false">General</button>
+              <button type="button" class="chip" data-categoria="preescolar" aria-pressed="false">Preescolar</button>
+              <button type="button" class="chip" data-categoria="primaria" aria-pressed="false">Primaria</button>
+              <button type="button" class="chip" data-categoria="evento" aria-pressed="false">Evento</button>
+              <button type="button" class="chip" data-categoria="administrativo" aria-pressed="false">Administrativo</button>
+            </div>
+            <label for="buscar" class="sr-only">Buscar avisos</label>
+            <input type="search" id="buscar" class="buscar" placeholder="Buscar avisos…">
+          </div>
+          <ul id="lista-avisos" class="lista-avisos" aria-live="polite"></ul>
+          <p id="vacio-avisos" class="vacio" hidden>No hay avisos con este filtro.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SOLICITUDES ================= -->
+    <section id="seccion-solicitudes" role="tabpanel" aria-labelledby="tab-solicitudes" class="seccion" hidden>
+      <div class="filtros-solicitudes">
+        <h2>Solicitudes de informes</h2>
+        <label for="filtro-estado" class="sr-only">Filtrar por estado</label>
+        <select id="filtro-estado">
+          <option value="">Todas</option>
+          <option value="nueva">Nuevas</option>
+          <option value="contactada">Contactadas</option>
+          <option value="cerrada">Cerradas</option>
+        </select>
+      </div>
+      <ul id="lista-solicitudes" class="lista-solicitudes" aria-live="polite"></ul>
+      <p id="vacio-solicitudes" class="vacio" hidden>No hay solicitudes con este filtro.</p>
+    </section>
+  </main>
+
+  <!-- Confirmación para eliminar -->
+  <dialog id="dialogo" class="dialogo" aria-labelledby="dialogo-titulo">
+    <h2 id="dialogo-titulo">¿Eliminar?</h2>
+    <p id="dialogo-texto">Esta acción no se puede deshacer.</p>
+    <div class="dialogo-acciones">
+      <button type="button" class="btn btn-secundario" value="cancelar" id="dialogo-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-peligro" value="confirmar" id="dialogo-confirmar">Eliminar</button>
+    </div>
+  </dialog>
+
+  <!-- Notificaciones -->
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>

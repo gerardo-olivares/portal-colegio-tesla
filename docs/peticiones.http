@@ -1,0 +1,124 @@
+### =============================================================
+### Peticiones de ejemplo para probar la API
+### Úsalas con la extensión "REST Client" de VS Code
+### (botón "Send Request" sobre cada petición) o cópialas a Postman.
+### =============================================================
+
+@base = http://localhost:3000/api
+# En producción cambia por:  https://TU-SERVICIO.onrender.com/api
+
+### Estado del servidor
+GET {{base}}/health
+
+### -------- AUTENTICACIÓN --------
+
+### Iniciar sesión (copia el "token" de la respuesta)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@colegiotesla.mx",
+  "password": "CambiaEstaContraseña123"
+}
+
+### Guarda el token automáticamente para las siguientes peticiones
+@token = {{login.response.body.data.token}}
+
+### Perfil del usuario autenticado
+GET {{base}}/auth/perfil
+Authorization: Bearer {{token}}
+
+### Registrar personal (solo admin)
+POST {{base}}/auth/registro
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Maestra Ana López",
+  "email": "ana.lopez@colegiotesla.mx",
+  "password": "Maestra2026"
+}
+
+### -------- AVISOS (CRUD) --------
+
+### READ: listar avisos (pública)
+GET {{base}}/avisos
+
+### READ: filtrar por categoría y buscar texto
+GET {{base}}/avisos?categoria=evento&q=festival
+
+### CREATE: crear aviso (requiere token)
+# @name nuevoAviso
+POST {{base}}/avisos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Suspensión de clases",
+  "contenido": "El viernes no habrá clases por la junta de Consejo Técnico Escolar.",
+  "categoria": "general",
+  "fechaEvento": "2026-11-27",
+  "fijado": true
+}
+
+@idAviso = {{nuevoAviso.response.body.data._id}}
+
+### READ: obtener un aviso por id
+GET {{base}}/avisos/{{idAviso}}
+
+### UPDATE: actualizar aviso
+PUT {{base}}/avisos/{{idAviso}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Suspensión de clases (viernes 27)",
+  "fijado": false
+}
+
+### DELETE: eliminar aviso
+DELETE {{base}}/avisos/{{idAviso}}
+Authorization: Bearer {{token}}
+
+### Intento sin token -> 401
+POST {{base}}/avisos
+Content-Type: application/json
+
+{ "titulo": "Sin permiso", "contenido": "Esto debe fallar con 401." }
+
+### Datos inválidos -> 400 con detalles por campo
+POST {{base}}/avisos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "titulo": "ab", "contenido": "corto", "categoria": "otra" }
+
+### -------- SOLICITUDES DE INFORMES --------
+
+### CREATE (pública): un padre envía una solicitud
+POST {{base}}/solicitudes
+Content-Type: application/json
+
+{
+  "nombre": "Laura Gómez",
+  "email": "laura.gomez@gmail.com",
+  "telefono": "777 123 4567",
+  "nivel": "primaria",
+  "mensaje": "Quisiera informes de inscripción para 2.º de primaria."
+}
+
+### READ (protegida): listar solicitudes nuevas
+GET {{base}}/solicitudes?estado=nueva
+Authorization: Bearer {{token}}
+
+### UPDATE (protegida): cambiar estado  -> reemplaza ID_SOLICITUD
+PATCH {{base}}/solicitudes/ID_SOLICITUD
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "estado": "contactada" }
+
+### DELETE (protegida)
+DELETE {{base}}/solicitudes/ID_SOLICITUD
+Authorization: Bearer {{token}}
